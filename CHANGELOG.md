@@ -373,6 +373,13 @@ quick succession; something that has not worked perfectly in the past.
   the switch from CodeMirror 5 to CodeMirror 6.
 - Zettlr won't attempt to check for updates anymore if the device is offline.
 - Improve performance by debouncing word counts (#5952).
+- Empty selectable lists now show a message visually indicating that the list is
+  empty.
+- The snippets view now indicates better if there is no selected snippet.
+- When adding either snippets or import/export profiles, you can now enter the
+  new name for these directly in the list instead of having to rename a random
+  file.
+- Popovers now have an improved arrow color for better visibility.
 
 ## Under the Hood
 
@@ -466,6 +473,17 @@ quick succession; something that has not worked perfectly in the past.
 - The window manager now emits fullscreen state change events to the main
   windows. This allows Custom CSS and other parts of the state to subscribe to
   whether the `body` has the `fullscreen` class and perform changes.
+- The Assets Provider now ensures that defaults and snippets always have the
+  correct filename extension as required.
+- Relocate the PopoverWrapper component to the common Vue directory for access
+  in other windows.
+- Popovers now allow their parent element to specify placement priorities.
+  Instead of always trying to place the popover first below, then right, then
+  above the element, and never to the left, the owner of a Popover can now
+  specify a set of priorities for placement. The `PopoverWrapper` will use the
+  first priority that can be fulfilled while respecting space constraints. The
+  default priorities reproduce the existing behavior (with the added ability to
+  use the left side if necessary).
 
 # 3.6.0
 

@@ -7,64 +7,68 @@
     v-bind:initial-total-width="100"
   >
     <template #view1>
-      <div id="snippets-container-list">
+      <div id="filter-container-list">
         <SelectableList
-          v-bind:items="availableSnippets"
+          v-bind:items="listItems"
           v-bind:selected-item="currentItem"
           v-bind:editable="true"
           v-bind:add-text-item="true"
-          v-on:add="addSnippet($event)"
+          v-on:add="addFilter($event)"
           v-on:select="currentItem = $event"
-          v-on:remove="removeSnippet($event)"
+          v-on:remove="removeFilter($event)"
         ></SelectableList>
         <ButtonControl
-          v-bind:label="openSnippetsFolderLabel"
+          v-bind:label="openFilterFolderLabel"
           v-bind:inline="false"
-          v-on:click="openSnippetsDirectory"
+          v-on:click="openFilterDirectory"
         ></ButtonControl>
       </div>
     </template>
     <template #view2>
-      <div id="snippets-container">
+      <div id="filter-container">
         <ZtrAdmonition v-bind:type="'info'">
-          {{ snippetsExplanation }}
+          {{ filterExplanation }}
+        </ZtrAdmonition>
+
+        <ZtrAdmonition v-if="currentItem >= 0 && protectedFilters.includes(availableFilters[currentItem])" type="warning" style="margin-top: 10px">
+          {{ protectedFilterWarning }}
         </ZtrAdmonition>
 
         <template v-if="currentItem < 0">
           <ZtrAdmonition v-bind:type="'warning'" style="margin-top: 10px">
-            {{ noSnippetsMessage }}
+            {{ noFilterMessage }}
           </ZtrAdmonition>
         </template>
         <template v-else>
           <p>
             <TextControl
-              v-model="currentSnippetText"
-              class="snippet-name-input"
+              v-model="currentFilterText"
+              class="filter-name-input"
               v-bind:inline="false"
               v-bind:disabled="currentItem < 0"
-              v-on:confirm="renameSnippet()"
+              v-on:confirm="renameFilter()"
             ></TextControl>
             <ButtonControl
-              v-bind:label="renameSnippetLabel"
+              v-bind:label="renameFilterLabel"
               v-bind:inline="true"
-              v-bind:disabled="availableSnippets.length === 0 || currentSnippetText === availableSnippets[currentItem]"
-              v-on:click="renameSnippet()"
+              v-bind:disabled="availableFilters.length === 0 || currentFilterText === availableFilters[currentItem]"
+              v-on:click="renameFilter()"
             ></ButtonControl>
           </p>
 
           <CodeEditor
             ref="code-editor"
             v-model="editorContents"
-            v-bind:mode="'markdown-snippets'"
+            v-bind:mode="'lua'"
             v-bind:readonly="currentItem < 0"
           ></CodeEditor>
-          <div class="save-snippet-file">
+          <div class="save-filter-file">
             <ButtonControl
               v-bind:primary="true"
               v-bind:label="saveButtonLabel"
               v-bind:inline="true"
               v-bind:disabled="currentItem < 0 || ($refs['code-editor'] != null && ($refs['code-editor'] as any).isClean())"
-              v-on:click="saveSnippet()"
+              v-on:click="saveFilter()"
             ></ButtonControl>
             <span v-if="savingStatus !== ''" class="saving-status">{{ savingStatus }}</span>
           </div>
@@ -79,160 +83,187 @@
  * @ignore
  * BEGIN HEADER
  *
- * Contains:        Defaults
+ * Contains:        FilterTab
  * CVM-Role:        View
  * Maintainer:      Hendrik Erz
  * License:         GNU GPL v3
  *
- * Description:     This is the defaults file editor view. It allows users to
- *                  modify the provided defaults files.
+ * Description:     This view exposes the Lua filters to the user.
  *
  * END HEADER
  */
 
 import SplitView from '@common/vue/window/SplitView.vue'
-import SelectableList from '@common/vue/form/elements/SelectableList.vue'
+import SelectableList, { type SelectableListItem } from '@common/vue/form/elements/SelectableList.vue'
 import ButtonControl from '@common/vue/form/elements/ButtonControl.vue'
 import TextControl from '@common/vue/form/elements/TextControl.vue'
 import CodeEditor from '@common/vue/CodeEditor.vue'
 import { trans } from '@common/i18n-renderer'
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted, computed, onMounted } from 'vue'
 import type { AssetsProviderIPCAPI } from 'source/app/service-providers/assets'
 import ZtrAdmonition from 'source/common/vue/ZtrAdmonition.vue'
 
 const ipcRenderer = window.ipc
 
-const noSnippetsMessage = trans('No snippet selected.')
+const noFilterMessage = trans('No filter selected.')
+const protectedFilterWarning = trans('This filter is protected. It will be restored if you rename or remove this file.')
 const saveButtonLabel = trans('Save')
-const renameSnippetLabel = trans('Rename snippet')
-const snippetsExplanation = trans('Snippets let you define reusable pieces of text with variables.')
-const openSnippetsFolderLabel = trans('Open snippets folder')
+const renameFilterLabel = trans('Rename filter')
+const filterExplanation = trans('Lua filters allow customization of your Pandoc exports.')
+const openFilterFolderLabel = trans('Open filter folder')
 
 const currentItem = ref(-1)
-const currentSnippetText = ref('')
+const currentFilterText = ref('')
 const editorContents = ref('')
+const lastLoadedEditorContents = ref('')
 const savingStatus = ref('')
-const availableSnippets = ref<string[]>([])
+const availableFilters = ref<string[]>([])
+const protectedFilters = ref<string[]>([])
+
+const listItems = computed<SelectableListItem[]>(() => {
+  return availableFilters.value
+    .map(filter => {
+      return {
+        displayText: filter.substring(0, filter.lastIndexOf('.')),
+        icon: protectedFilters.value.includes(filter) ? 'lock' : undefined,
+        solidIcon: true
+      }
+    })
+})
 
 watch(currentItem, () => {
   loadState()
 })
 
 watch(editorContents, () => {
-  if (CodeEditor.value != null && CodeEditor.value.isClean() === true) {
+  if (editorContents.value === lastLoadedEditorContents.value) {
     savingStatus.value = ''
   } else {
     savingStatus.value = trans('Unsaved changes')
   }
 })
 
-// Immediately update the available snippets
-updateAvailableSnippets()
+// Immediately update the available filters
+updateAvailableFilters()
 
 const offCallback = ipcRenderer.on('shortcut', (event, shortcut) => {
   if (shortcut === 'save-file') {
-    saveSnippet()
+    saveFilter()
   }
+})
+
+onMounted(() => {
+  getProtectedFilters()
 })
 
 onUnmounted(() => { offCallback() })
 
-function updateAvailableSnippets (selectAfterUpdate?: string): void {
-  ipcRenderer.invoke('assets-provider', { command: 'list-snippets' } as AssetsProviderIPCAPI)
+function updateAvailableFilters (selectAfterUpdate?: string): void {
+  ipcRenderer.invoke('assets-provider', { command: 'list-filter' } as AssetsProviderIPCAPI)
     .then(data => {
-      availableSnippets.value = data
-      if (typeof selectAfterUpdate === 'string' && availableSnippets.value.includes(selectAfterUpdate)) {
-        currentItem.value = availableSnippets.value.indexOf(selectAfterUpdate)
+      availableFilters.value = data
+      if (typeof selectAfterUpdate === 'string' && availableFilters.value.includes(selectAfterUpdate)) {
+        currentItem.value = availableFilters.value.indexOf(selectAfterUpdate)
       }
       loadState()
     })
     .catch(err => console.error(err))
 }
 
+function getProtectedFilters (): void {
+  ipcRenderer.invoke('assets-provider', { command: 'list-protected-filter' } as AssetsProviderIPCAPI)
+    .then(files => {
+      protectedFilters.value = files
+    })
+    .catch(err => console.error(err))
+}
+
 function loadState (): void {
-  if (availableSnippets.value.length === 0) {
+  if (availableFilters.value.length === 0) {
     editorContents.value = ''
     CodeEditor.value?.markClean()
     savingStatus.value = ''
-    currentSnippetText.value = ''
+    currentFilterText.value = ''
     currentItem.value = -1
     return // No state to load, only an error to avoid
   }
 
-  if (currentItem.value >= availableSnippets.value.length) {
-    currentItem.value = availableSnippets.value.length - 1
+  if (currentItem.value >= availableFilters.value.length) {
+    currentItem.value = availableFilters.value.length - 1
   } else if (currentItem.value < 0) {
     currentItem.value = 0
   }
 
   ipcRenderer.invoke('assets-provider', {
-    command: 'get-snippet',
+    command: 'get-filter',
     payload: {
-      name: availableSnippets.value[currentItem.value]
+      filename: availableFilters.value[currentItem.value]
     }
   } as AssetsProviderIPCAPI)
     .then(data => {
       editorContents.value = data
       CodeEditor.value?.markClean()
+      lastLoadedEditorContents.value = data
       savingStatus.value = ''
-      currentSnippetText.value = availableSnippets.value[currentItem.value]
+      currentFilterText.value = availableFilters.value[currentItem.value]
     })
     .catch(err => console.error(err))
 }
 
-function saveSnippet (): void {
+function saveFilter (): void {
   savingStatus.value = trans('Saving …')
 
   ipcRenderer.invoke('assets-provider', {
-    command: 'set-snippet',
+    command: 'set-filter',
     payload: {
-      name: availableSnippets.value[currentItem.value],
+      filename: availableFilters.value[currentItem.value],
       contents: editorContents.value
     }
   } as AssetsProviderIPCAPI)
     .then(() => {
+      lastLoadedEditorContents.value = editorContents.value
       setTimeout(() => { savingStatus.value = trans('Saved!') }, 1000)
       setTimeout(() => { savingStatus.value = '' }, 2000)
     })
     .catch(err => console.error(err))
 }
 
-function addSnippet (newName?: string): void {
-  // Adds a snippet with empty contents and a generic default name
+function addFilter (newName?: string): void {
+  // Adds a filter with empty contents and a generic default name
   if (newName !== undefined) {
     newName = newName.trim()
   }
   if (newName === undefined || newName === '') {
-    newName = ensureUniqueName('snippet')
+    newName = ensureUniqueName('filter')
   }
 
   ipcRenderer.invoke('assets-provider', {
-    command: 'set-snippet',
+    command: 'set-filter',
     payload: {
-      name: newName,
+      filename: newName,
       contents: ''
     }
   } as AssetsProviderIPCAPI)
-    .then(() => { updateAvailableSnippets(newName) })
+    .then(() => { updateAvailableFilters(newName) })
     .catch(err => console.error(err))
 }
 
-function removeSnippet (idx: number): void {
-  if (idx > availableSnippets.value.length - 1 || idx < 0) {
+function removeFilter (idx: number): void {
+  if (idx > availableFilters.value.length - 1 || idx < 0) {
     return
   }
 
-  // Remove the current snippet.
+  // Remove the current filter.
   ipcRenderer.invoke('assets-provider', {
-    command: 'remove-snippet',
-    payload: { name: availableSnippets.value[idx] }
+    command: 'remove-filter',
+    payload: { filename: availableFilters.value[idx] }
   } as AssetsProviderIPCAPI)
-    .then(() => { updateAvailableSnippets() })
+    .then(() => { updateAvailableFilters() })
     .catch(err => console.error(err))
 }
 
-function renameSnippet (): void {
-  let newVal = currentSnippetText.value
+function renameFilter (): void {
+  let newVal = currentFilterText.value
 
   // Sanitise the name
   newVal = newVal.replace(/[^a-zA-Z0-9_-]/g, '-')
@@ -240,25 +271,25 @@ function renameSnippet (): void {
   newVal = ensureUniqueName(newVal)
 
   ipcRenderer.invoke('assets-provider', {
-    command: 'rename-snippet',
+    command: 'rename-filter',
     payload: {
-      name: availableSnippets.value[currentItem.value],
+      oldName: availableFilters.value[currentItem.value],
       newName: newVal
     }
   } as AssetsProviderIPCAPI)
-    .then(() => { updateAvailableSnippets(newVal) })
+    .then(() => { updateAvailableFilters(newVal) })
     .catch(err => console.error(err))
 }
 
 /**
- * Ensures that the given name candidate describes a unique snippet filename
+ * Ensures that the given name candidate describes a unique filter filename
  *
  * @param   {string}  candidate  The candidate's name
  *
  * @return  {string}             The candidate's name, with a number suffix (-X) if necessary
  */
 function ensureUniqueName (candidate: string): string {
-  if (!availableSnippets.value.includes(candidate)) {
+  if (!availableFilters.value.includes(candidate)) {
     return candidate // No duplicate detected
   }
 
@@ -271,22 +302,22 @@ function ensureUniqueName (candidate: string): string {
     candidate = candidate.substring(0, candidate.length - match[1].length - 1)
   }
 
-  while (availableSnippets.value.includes(candidate + '-' + String(count))) {
+  while (availableFilters.value.includes(candidate + '-' + String(count))) {
     count++
   }
 
   return candidate + '-' + count
 }
 
-function openSnippetsDirectory (): void {
+function openFilterDirectory (): void {
   ipcRenderer.invoke('assets-provider', {
-    command: 'open-snippets-directory'
+    command: 'open-filter-directory'
   } as AssetsProviderIPCAPI).catch(err => console.error(err))
 }
 </script>
 
 <style lang="less">
-#snippets-container-list {
+#filter-container-list {
   display: flex;
   flex-direction: column;
   height: stretch;
@@ -301,17 +332,17 @@ function openSnippetsDirectory (): void {
   }
 }
 
-#snippets-container {
+#filter-container {
   padding: 10px;
   height: 100%;
   display: flex;
   flex-direction: column;
 
-  .snippet-name-input {
+  .filter-name-input {
     flex: 1;
   }
 
-  .save-snippet-file {
+  .save-filter-file {
     padding: 10px 0px;
     display: flex;
     gap: 15px;

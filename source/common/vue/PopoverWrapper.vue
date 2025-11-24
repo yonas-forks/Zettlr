@@ -48,7 +48,9 @@ const placementPriorities = computed<[Placement, Placement, Placement, Placement
 const popupWrapper = ref<HTMLDivElement|null>(null)
 const popupArrow = ref<HTMLDivElement|null>(null)
 
-const ARROW_SIZE = 20 // in pixels
+const MAX_ARROW_SIZE = 20
+const MIN_ARROW_SIZE = 5
+const DOCUMENT_MARGIN = 10
 
 onMounted(() => {
   document.addEventListener('mousedown', onClick)
@@ -114,44 +116,76 @@ function place (): void {
     return
   }
 
-  const el = popupWrapper.value
+  const wrapper = popupWrapper.value
   const arrow = popupArrow.value
 
   // First, reset any applied styles to the elements
-  el.style.height = ''
-  el.style.width = ''
-  el.style.left = ''
-  el.style.top = ''
+  wrapper.style.height = ''
+  wrapper.style.width = ''
+  wrapper.style.left = ''
+  wrapper.style.top = ''
+
   arrow.style.left = ''
   arrow.style.top = ''
+  arrow.style.display = ''
+  arrow.style.borderWidth = ''
   arrow.classList.remove('up', 'down', 'left', 'right')
 
   // Windows doesn't have arrows on their popovers, just as they call them
   // "flyouts" instead of PopOvers. So on Windows we shouldn't show them.
-  const showArrow = process.platform !== 'win32'
-  const arrowSize = (showArrow) ? ARROW_SIZE : 10 // Windows gets 10px margin
+  if (process.platform === 'win32') {
+    arrow.style.display = 'none'
+  }
 
-  const elemRect = props.target.getBoundingClientRect()
+  // Gather dimensions of window and target (which do not change here)
+  const windowWidth = window.innerWidth
+  const windowHeight = window.innerHeight
 
-  // Where we should align the Popover to
-  let x = elemRect.left + elemRect.width / 2
-  let y = elemRect.top + elemRect.height
+  const targetRect = props.target.getBoundingClientRect()
+  const targetTop = targetRect.top
+  const targetLeft = targetRect.left
+  const targetWidth = targetRect.width
+  const targetHeight = targetRect.height
+  const targetRight = targetLeft + targetWidth
+  const targetBottom = targetTop + targetHeight
 
-  // Popover width and height
-  let height = el.offsetHeight
-  let width = el.offsetWidth
+  // Dynamically calculate the arrow size, based on the shortest side of the popover.
+  const shortSide = Math.min(wrapper.offsetHeight, wrapper.offsetWidth)
+  const wantedArrowSize = Math.round(shortSide / 4)
+  // Actual arrow size is constrained between min and max sizes.
+  const arrowSize = Math.min(Math.max(wantedArrowSize, MIN_ARROW_SIZE), MAX_ARROW_SIZE)
 
-  // First find on which side there is the most space.
-  const top = elemRect.top
-  const left = elemRect.left
-  const right = window.innerWidth - left - elemRect.width
-  const bottom = window.innerHeight - top - elemRect.height
+  arrow.style.borderWidth = `${arrowSize}px`
 
-  let canPlaceBelow = bottom > height + 10 || elemRect.top < 50
-  let canPlaceRight = right > width + 10 && height <= window.innerHeight - 20 - y
-  let canPlaceAbove = top > height + 10
-  let canPlaceLeft = left + 10 < width && height <= window.innerHeight - 20 - y
+  console.log({ wantedArrowSize, shortSide, arrowSize })
 
+  // Safety checks: Here we adjust the popover dimensions if necessary
+  // Ensure the popover is not higher or wider than the window itself
+  if (wrapper.offsetHeight > windowHeight - 2 * DOCUMENT_MARGIN - 2 * arrowSize) {
+    wrapper.style.height = `${windowHeight - 2 * DOCUMENT_MARGIN - 2 * arrowSize}px`
+  }
+  if (wrapper.offsetWidth > windowWidth - 2 * DOCUMENT_MARGIN - 2 * arrowSize) {
+    wrapper.style.width = `${windowWidth - 2 * DOCUMENT_MARGIN - 2 * arrowSize}px`
+  }
+
+  // Now we can safely retrieve the popover dimensions
+  const wrapperHeight = wrapper.offsetHeight
+  const wrapperWidth = wrapper.offsetWidth
+
+  const spaceAbove = targetTop
+  const spaceBelow = windowHeight - targetBottom
+  const spaceLeft = targetLeft
+  const spaceRight = windowWidth - targetRight
+
+  // Check where we can place the popover. Usually this will yield more than one
+  // `true` value.
+  const placementMargins = DOCUMENT_MARGIN + arrowSize
+  const canPlaceBelow = spaceBelow > wrapperHeight + placementMargins && spaceLeft > placementMargins && spaceRight > placementMargins
+  const canPlaceRight = spaceRight > wrapperWidth + placementMargins && spaceAbove > placementMargins && spaceBelow > placementMargins
+  const canPlaceAbove = spaceAbove > wrapperHeight + placementMargins && spaceLeft > placementMargins && spaceRight > placementMargins
+  const canPlaceLeft = spaceLeft > wrapperWidth + placementMargins && spaceAbove > placementMargins && spaceBelow > placementMargins
+
+  // Fallback: below, if nothing actually fits.
   let actualPlacement: Placement = 'below'
 
   // First priority that can be fulfilled wins
@@ -171,108 +205,60 @@ function place (): void {
     }
   }
 
-  // 10px: arrow plus the safety-margin
+  // At this point, we know where we can and should place the popover. So assign
+  // the correct top/left values and place the arrow accordingly. We do the same
+  // for the arrow, albeit those values only take effect if the arrow is
+  // actually shown.
+
   if (actualPlacement === 'below') {
-    // Below element
+    wrapper.style.top = `${targetBottom + arrowSize}px`
+    wrapper.style.left = `${targetLeft + targetWidth / 2 - wrapperWidth / 2}px`
+
     arrow.classList.add('up')
-    el.style.top = `${y + arrowSize}px` // 5px margin for arrow
-    if ((x + width / 2) > (window.innerWidth - 10)) { // 10px margin to document
-      el.style.left = `${window.innerWidth - width - 10}px` // 10px margin to document
-    } else if (x - width / 2 < 10) { // 10px margin to document
-      el.style.left = '10px' // 10px margin to document
-    } else {
-      el.style.left = `${x - width / 2}px` // Place centered under element
-    }
-
-    if (showArrow) {
-      arrow.style.top = `${top + elemRect.height}px`
-      arrow.style.left = `${left + elemRect.width / 2 - arrow.offsetWidth / 2}px`
-    } else {
-      arrow.style.display = 'none'
-    }
-
-    // Ensure the popup is completely visible (move inside the document if it's at an edge)
-    if (el.offsetLeft + el.offsetWidth > window.innerWidth - 10) {
-      el.style.left = `${window.innerWidth - el.offsetWidth - 10}px`
-    } if (el.offsetLeft < 10) {
-      el.style.left = '10px'
-    }
-
-    // Ensure the popup is not higher than the window itself
-    if (height > window.innerHeight - 20 - y) {
-      el.style.height = `${window.innerHeight - 20 - y}px`
-      height = el.offsetHeight
-    }
+    arrow.style.top = `${targetTop + targetHeight}px`
+    arrow.style.left = `${targetLeft + targetWidth / 2 - arrow.offsetWidth / 2}px`
   } else if (actualPlacement === 'right') {
-    // We can place it right of the element
-    // Therefore re-compute x and y
-    x = elemRect.left + elemRect.width
-    y = elemRect.top + elemRect.height / 2
-    el.style.left = `${x + arrowSize}px`
-    if (y + height / 2 > window.innerHeight - arrowSize) {
-      el.style.top = `${window.innerHeight - height - arrowSize}px`
-    } else {
-      el.style.top = `${y - height / 2}px`
-    }
+    wrapper.style.top = `${targetTop + targetHeight / 2 - wrapperHeight / 2}px`
+    wrapper.style.left = `${targetRight + arrowSize}px`
 
-    if (showArrow) {
-      arrow.classList.add('left')
-      arrow.style.left = `${left + elemRect.width}px`
-      arrow.style.top = `${top + elemRect.height / 2 - arrow.offsetHeight / 2}px`
-    }
-
-    // Ensure the popup is completely visible (move inside the document if it's at an edge)
-    if (el.offsetTop + el.offsetHeight > window.innerHeight - 10) {
-      el.style.top = `${window.innerHeight - el.offsetHeight - 10}px`
-    } if (el.offsetTop < 10) {
-      el.style.top = '10px'
-    }
+    arrow.classList.add('left')
+    arrow.style.top = `${targetTop + targetHeight / 2 - arrow.offsetHeight / 2}px`
+    arrow.style.left = `${targetLeft + targetWidth}px`
   } else if (actualPlacement === 'above') {
-    // Above
-    // Therefore re-compute x and y
-    x = elemRect.left + elemRect.width / 2
-    y = elemRect.top
-    el.style.top = `${y - height - arrowSize}px`
-    if (x + width / 2 > window.innerWidth - arrowSize) {
-      el.style.left = `${window.innerWidth - width - arrowSize}px`
-    } else {
-      el.style.left = `${x - width / 2}px`
-    }
+    wrapper.style.top = `${targetTop - wrapperHeight - arrowSize}px`
+    wrapper.style.left = `${targetLeft + targetWidth / 2 - wrapperWidth / 2}px`
 
-    if (showArrow) {
-      arrow.classList.add('down')
-      arrow.style.top = `${top - arrowSize}px`
-      arrow.style.left = `${left + elemRect.width / 2 - arrow.offsetWidth / 2}px`
-    }
-
-    // Ensure the popup is completely visible (move inside the document if it's at an edge)
-    if (el.offsetLeft + el.offsetWidth > window.innerWidth - 10) {
-      el.style.left = `${window.innerWidth - el.offsetWidth - 10}px`
-    } if (el.offsetLeft < 10) {
-      el.style.left = '10px'
-    }
+    arrow.classList.add('down')
+    arrow.style.top = `${targetTop - arrowSize}px`
+    arrow.style.left = `${targetLeft + targetWidth / 2 - arrow.offsetWidth / 2}px`
   } else if (actualPlacement === 'left') {
-    // We can place it left of the element
-    x = elemRect.left - width
-    y = elemRect.top + elemRect.height / 2
-    el.style.left = `${x - arrowSize}px`
-    if (y + height / 2 > window.innerHeight - arrowSize) {
-      el.style.top = `${window.innerHeight - height - arrowSize}px`
-    } else {
-      el.style.top = `${y - height / 2}px`
-    }
+    wrapper.style.top = `${targetTop + targetHeight / 2 - wrapperHeight / 2}px`
+    wrapper.style.left = `${targetLeft - wrapperWidth - arrowSize}px`
 
-    if (showArrow) {
-      arrow.classList.add('right')
-      arrow.style.left = `${left + width}px`
-      arrow.style.top = `${top + elemRect.height / 2 - arrow.offsetHeight / 2}px`
-    }
+    arrow.classList.add('right')
+    arrow.style.top = `${targetTop + targetHeight / 2 - arrow.offsetHeight / 2}px`
+    arrow.style.left = `${targetLeft + wrapperWidth}px`
+  }
 
-    // Ensure the popup is completely visible (move inside the document if it's at an edge)
-    if (el.offsetTop + el.offsetHeight > window.innerHeight - 10) {
-      el.style.top = `${window.innerHeight - el.offsetHeight - 10}px`
-    } if (el.offsetTop < 10) {
-      el.style.top = '10px'
+  // At this point, the popover is placed centrally next to the target in the
+  // provided direction. This means that the first axis is now laid out. Next,
+  // we need to check if we have to move the popover in the second axis. For
+  // example, if we have placed the popover to the left of the target, but the
+  // target is close to the top/bottom viewport border, we may have to move it
+  // up/down to ensure the popover is shown completely.
+  if (actualPlacement === 'right' || actualPlacement === 'left') {
+    const { top, bottom } = wrapper.getBoundingClientRect() // Re-fetch the values
+    if (top < 0) {
+      wrapper.style.top = `${DOCUMENT_MARGIN}px`
+    } if (bottom > windowHeight) {
+      wrapper.style.top = `${windowHeight - DOCUMENT_MARGIN - wrapperHeight}px`
+    }
+  } else if (actualPlacement === 'above' || actualPlacement === 'below') {
+    const { left, right } = wrapper.getBoundingClientRect() // Re-fetch the values
+    if (left < 0) {
+      wrapper.style.left = `${DOCUMENT_MARGIN}px`
+    } if (right > windowWidth) {
+      wrapper.style.left = `${windowWidth - DOCUMENT_MARGIN - wrapperWidth}px`
     }
   }
 }

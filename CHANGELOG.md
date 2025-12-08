@@ -280,6 +280,9 @@ files.
 - **Feature**: Zettlr now exposes the Lua filter directory to you. Now you can
   add, remove, and modify both the built-in filters as well as your own, custom
   ones.
+- **Feature**: The exporting workflow is now smoother. The export button will be
+  focused as soon as the export popover opens, meaning you can press `Enter` to
+  start the export using the current settings.
 - **Change**: Zettlr now monitors your documents and will automatically remove
   footnotes and references without the corresponding reference or footnote. If
   you have any documents in which you have un-referenced footnotes, or
@@ -290,6 +293,8 @@ files.
   snippets to `$FILENAME$EXTENSION` (#4191).
 - **Change**: The word and character counters in the statusbar now always show
   both counts.
+- **Change**: Removed the readability mode toggle from the toolbar. You can now
+  trigger the readability mode via the status bar.
 - **Change**: Modified the Zettelkasten link insertion workflow. The previous
   settings "Link with filename only" and "When linking files, add the document
   name …" have been removed. Instead, there are two new settings, "Always use
@@ -413,11 +418,19 @@ files.
 - Fix wrong display in relative directory paths during global search.
 - Replace misleading folder icons (folder and open folder) with new icon choices
   ("Home" and "Ban").
+- Fix a small bug that would throw an error if a user would specify the
+  `bibliography` key in a profile as a single string, instead of a list.
+- Replacing tags works now case-insensitive (replacing `#hello` with `#olleh`
+  now also replaces `#HeLlO`) (#6009).
+- Table header cells are now aligned left by default.
+- Increase icon sizes in file manager.
+- Fixed a bug that would inadvertently emit metadata for the PO-file if
+  translating an empty string.
 
 ## Under the Hood
 
-- Update Electron to version `39.0.0`.
-- Update Pandoc to version `3.8.2.1`.
+- Update Electron to version `39.2.6`.
+- Update Pandoc to version `3.8.3`.
 - **Feature/Change**: Full rewrite of the File System Abstraction Layer (FSAL).
   The rewrite has fully transformed the file abstraction logic to remove any
   tree structures, and instead mostly treat all loaded files as a single, long

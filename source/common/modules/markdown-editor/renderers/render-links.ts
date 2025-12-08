@@ -31,7 +31,7 @@ function hideLinkMarkers (view: EditorView): RangeSet<Decoration> {
         }
 
         // Do not hide any characters if a selection is inside here
-        if (rangeInSelection(view.state, node.from, node.to)) {
+        if (rangeInSelection(view.state.selection, node.from, node.to, true)) {
           return false
         }
 
@@ -89,7 +89,9 @@ export const renderLinks = ViewPlugin.fromClass(class {
   }
 
   update (update: ViewUpdate): void {
-    this.decorations = hideLinkMarkers(update.view)
+    if (update.docChanged || update.viewportChanged || update.selectionSet) {
+      this.decorations = hideLinkMarkers(update.view)
+    }
   }
 }, {
   decorations: v => v.decorations

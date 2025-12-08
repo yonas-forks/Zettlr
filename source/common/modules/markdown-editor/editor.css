@@ -103,6 +103,7 @@
 
   /* A few elements always need to be displayed monospaced */
   .cm-comment,
+  .cm-block-comment,
   .cm-fenced-code,
   .cm-table
   .cm-formatting-task,
@@ -129,7 +130,7 @@
     cursor: pointer;
     border-radius: 3px;
     padding: 0 4px;
-  
+
     span {
       font-size: 20px;
       font-weight: normal;
@@ -166,14 +167,6 @@
     cursor: help;
     margin: 0 auto; /* (Re-)center */
   }
-
-  /* These classes are being applied by the heading-classes hook */
-  .size-header-1 { font-size: 2em; }
-  .size-header-2 { font-size: 1.8em; }
-  .size-header-3 { font-size: 1.5em; }
-  .size-header-4 { font-size: 1.3em; }
-  .size-header-5 { font-size: 1em; }
-  .size-header-6 { font-size: 1em; }
 
   /* The underlying gfm mode is funny. For top level task items, it applies the
   class cm-variable-2 for the full text. For second-level task items, it

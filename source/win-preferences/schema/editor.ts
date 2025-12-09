@@ -118,6 +118,18 @@ export function getEditorFields (config: ConfigOptions): PreferencesFieldset[] {
               label: trans('Render emphasis'),
               model: 'display.renderEmphasis',
               disabled: config.display.renderingMode === 'raw'
+            },
+            {
+              type: 'checkbox',
+              label: trans('Render pandoc divs and spans'),
+              model: 'display.renderPandoc',
+              disabled: config.display.renderingMode === 'raw'
+            },
+            {
+              type: 'checkbox',
+              label: trans('Render horizontal rules'),
+              model: 'display.renderHorizontalRules',
+              disabled: config.display.renderingMode === 'raw'
             }
           ]
         }

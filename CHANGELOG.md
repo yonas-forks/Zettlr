@@ -447,6 +447,8 @@ element may interfere, or even break the main editor.
 - Fixed a bug that would inadvertently emit metadata for the PO-file if
   translating an empty string.
 - Re-implemented linking to folders from within documents (#6023).
+- Fix wrong suggested directories in the global search (#6065).
+- Fixed recent documents on Linux or Windows not opening (#4825).
 
 ## Under the Hood
 

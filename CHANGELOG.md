@@ -2,11 +2,19 @@
 
 ## GUI and Functionality
 
+- **Feature**: You can now collapse YAML frontmatters and Pandoc divs (#6115).
+- **Feature**: Zettlr now remembers folded regions as long as the window remains
+  open, even when you close a document (#6115).
 - **Change**: Due to a configuration change, downgrading Zettlr (which we
   generally discourage) after updating to this version will lead to your
   workspaces being closed.
 - Fixed XCode Command Line Tools setup dialog on macOS (#5428).
+- Fixed an issue that prevented opening Markdown files with tables that include
+  Pandoc attribute strings when the TableEditor was enabled (#6110).
+- Fixed footnote tooltip rendering (#6107).
+- Improved link target extraction logic when following links (#6098).
 - Performance improvements when following links (#6072).
+- Hide reference link labels when previewing Markdown links (#6097).
 - Improved performance on generating the preview-bibliography in the sidebar by
   collecting citation keys from the document only in the main process (#6068).
 - Improved math parsing to fix certain cases (#6030).
@@ -51,6 +59,8 @@
   Pandoc (e.g., by listing it as a dependency for Zettlr). This also means that
   the build environment does not require the dependencies that are specifically
   for the download script.
+- fix: The Pandoc Attribute parser does not throw an error on malformed
+  attribute strings anymore, and instead just returns an empty record (#6110).
 
 # 4.0.0
 

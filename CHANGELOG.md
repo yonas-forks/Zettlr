@@ -6,12 +6,22 @@
   tab sizes are bound between 2 and 10 (see #6131).
 - Fixed links not registering clicks when they are pre-rendered within table
   cells of the TableEditor (#4557).
+- Fix application of custom tag classes.
+- Fixed a bug that would not correctly apply the `code` class to segments of
+  code in some circumstances (primarily when adding YAML front matters or
+  comments).
+- Fix syntax highlighting in code blocks, frontmatters, etc. Now, Zettlr assigns
+  more default-colors of the solarized code syntax theme. In addition, regular
+  text is now more readable, especially in light mode.
+- Fixes and improvements to the toolbar styling; simplify CSS rules.
+- Made toolbar icons slightly larger.
 - Update `ja-JP` translation (#6132).
 
 ## Under the Hood
 
 - The FSAL Cache now consistently utilizes asynchronous filesystem operations
   (#5994).
+- Refactor Zettelkasten link and tag parsing (#5997).
 - Number controls in forms now allow for providing `min` and `max` values.
 
 # 4.1.0

@@ -16,6 +16,9 @@
 - Fixes and improvements to the toolbar styling; simplify CSS rules.
 - Made toolbar icons slightly larger.
 - Update `ja-JP` translation (#6132).
+- Fixed a bug that would not accept custom height constraints via Pandoc
+  attributes for images if the maximum image height was set to 100% in the
+  settings.
 - Fixed "Learn more" link on the citation page in the onboarding window (#6138).
 
 ## Under the Hood
@@ -24,6 +27,14 @@
   (#5994).
 - Refactor Zettelkasten link and tag parsing (#5997).
 - Number controls in forms now allow for providing `min` and `max` values.
+- Increased strictness of the `@typescript-eslint/no-explicit-any` rule from
+  "off" (no checking) to "warn" to slowly start migrating away from any
+  remaining `any` uses in the wild.
+- FSAL Improvements:
+  - Removed a lot of dead code in the FSAL.
+  - Moved the save functionality away from the `FSAL*`-submodules, and divided
+    the responsibility between the `DocumentsProvider` and the `FSAL` module.
+
 
 # 4.1.0
 

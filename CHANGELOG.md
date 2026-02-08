@@ -2,11 +2,24 @@
 
 ## GUI and Functionality
 
-(nothing here)
+- **Feature**: New utilities for working with native Pandoc Divs and spans
+  (#6032):
+  - Added a new setting to switch between native highlights (`==mark==`) and
+    using spans for this (`[mark]{.highlight}`).
+  - Added a new toolbar button to insert divs and spans.
+  - Added new buttons to the formatting toolbar to insert underlined,
+    strikethrough, and highlighted spans.
+- Added an error message that explains to users that an import profile is needed
+  if they attempt to import a supported file with no profile.
+- Updated `pt-BR` translation (#6154).
+- Improved the tag recognition to allow for more varied Unicode characters in
+  tags than previously, including umlauts, accents, or emojis (#6155).
+- Improved pilcrow styling when whitespace rendering is on (#6152).
 
 ## Under the Hood
 
-(nothing here)
+- Increased config retrieval speed in the renderers (#6140). This can speed up
+  some UI interactions.
 
 # 4.1.1
 

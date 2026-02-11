@@ -9,12 +9,16 @@
   - Added a new toolbar button to insert divs and spans.
   - Added new buttons to the formatting toolbar to insert underlined,
     strikethrough, and highlighted spans.
+- **Feature**: Blockquotes are now rendered with a vertical bar (#6122).
 - Added an error message that explains to users that an import profile is needed
   if they attempt to import a supported file with no profile.
 - Updated `pt-BR` translation (#6154).
 - Improved the tag recognition to allow for more varied Unicode characters in
   tags than previously, including umlauts, accents, or emojis (#6155).
 - Improved pilcrow styling when whitespace rendering is on (#6152).
+- Fixed the frontmatter linter never reporting any errors with the YAML (#6167).
+- Fixed an issue where images that spanned multiple lines could cause the editor
+  to crash when image rendering was active.
 
 ## Under the Hood
 

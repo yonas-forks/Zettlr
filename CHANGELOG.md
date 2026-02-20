@@ -12,6 +12,9 @@
 - **Feature**: Blockquotes are now rendered with a vertical bar (#6122).
 - **Feature**: Users can now opt to display hidden files and folders
   ("dot-files") in the sidebar and/or filemanager in the settings (#6041).
+- **Feature**: Custom Pandoc `div`s are now pre-rendered depending on the
+  corresponding setting (#6121). This allows you to preview any custom styling
+  you have applied to them within the editor.
 - Added an error message that explains to users that an import profile is needed
   if they attempt to import a supported file with no profile.
 - Updated `pt-BR` translation (#6154).
@@ -36,6 +39,10 @@
 - Updated MathJax URL in various HTML-based templates to v4 (#6148). Note that
   Zettlr will not overwrite existing templates, so to benefit from this, you
   will have to factory-reset the affected templates.
+- Fixed a bug starting with the Zotero 8 update in Zettlr would no longer
+  provide autocomplete for some users. The reason is that some of the items in
+  the exported CSL JSON files would lack an ID property (that is, the citekey),
+  while Zettlr assumed each item would have an ID.
 
 ## Under the Hood
 
